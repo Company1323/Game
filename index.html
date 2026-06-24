@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FoundSpy</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: #121212;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 500px;
+      background: #1e1e1e;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    }
+
+    h1, h2, h3 {
+      margin-top: 0;
+      text-align: center;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .field {
+      width: 100%;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      border: 1px solid #444;
+      border-radius: 10px;
+      background: #ffffff;
+      color: #000000;
+      font-size: 16px; /* مهم برای موبایل */
+      outline: none;
+      font-weight: 5px;
+    }
+
+    .field:focus {
+      border-color: #00ff08;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px 14px;
+      border: none;
+      border-radius: 10px;
+      background: #008504;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 8px;
+      align-items: center;
+    }
+
+    button:hover {
+      background: #127917;
+    }
+
+    .player-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .player-number {
+      min-width: 42px;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .player-name-input {
+      flex: 1;
+      pointer-events: auto;
+      position: relative;
+      z-index: 10;
+    }
+
+    .label-box {
+      text-align: center;
+      font-size: 28px;
+      font-weight: bold;
+      margin: 20px 0;
+      padding: 20px;
+      background: #2a2a2a;
+      border-radius: 14px;
+      min-height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #timer {
+      text-align: center;
+      font-size: 40px;
+      font-family: 'B Titr';
+      font-weight: bold;
+      color: #ff5252;
+      margin-top: 16px;
+    }
+
+    .result-item {
+      padding: 10px;
+      margin-bottom: 8px;
+      border-radius: 10px;
+      background: #2a2a2a;
+    }
+
+    .correct {
+      border-right: 5px solid #4caf50;
+    }
+
+    .wrong {
+      border-right: 5px solid #f44336;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- تنظیمات -->
+    <div id="setup-screen">
+      <h1>بازی جاسوس</h1>
+
+      <input id="player-count" class="field" type="number" min="2" max="14" placeholder="تعداد بازیکن (2 تا 14)" />
+      <input id="game-time" class="field" type="number" min="1" placeholder="زمان بازی به دقیقه" />
+
+      <button onclick="prepareNames()">ادامه</button>
+    </div>
+
+    <!-- وارد کردن نام‌ها -->
+    <div id="names-screen" class="hidden">
+      <h2>نام بازیکن‌ها</h2>
+      <div id="names-inputs-container"></div>
+      <button onclick="startGame()">شروع بازی</button>
+    </div>
+
+    <!-- بازی -->
+    <div id="game-screen" class="hidden">
+      <h2 id="player-turn-text"></h2>
+      <div class="label-box" id="word-label">؟؟؟؟؟</div>
+      <button id="action-btn" onclick="handleButtonClick()">نمایش کلمه</button>
+      <div id="timer-container" class="hidden">
+        <div id="timer">00:00</div>
+      </div>
+    </div>
+
+    <!-- حدس جاسوس -->
+    <div id="guess-screen" class="hidden">
+      <h2>حدس جاسوس‌ها</h2>
+      <div id="guess-inputs-container"></div>
+      <button onclick="checkGuesses()">بررسی حدس‌ها</button>
+      <div id="final-results"></div>
+    </div>
+  </div>
+
+  <script>
+    const locations = [
+      "فرودگاه", "بیمارستان", "مدرسه", "رستوران", "باشگاه",
+      "سینما", "هتل", "موزه", "کتابخانه", "شهربازی",
+      "بانک", "ایستگاه فضایی", "جنگل", "ساحل", "مترو",
+      "کافه", "مرکز خرید", "تئاتر", "آزمایشگاه", "آرایشگاه"
+    ];
+
+    let players = [];
+    let currentPlayerIndex = 0;
+    let spyCount = 0;
+    let isWordVisible = false;
+    let timeLeft = 0;
+    let timerInterval = null;
+
+    function prepareNames() {
+      const count = parseInt(document.getElementById('player-count').value);
+      const gameTime = parseInt(document.getElementById('game-time').value);
+
+      if (isNaN(count) || count < 2 || count > 14) {
+        alert("تعداد بازیکن باید بین 2 تا 12 باشد.");
+        return;
+      }
+
+      if (isNaN(gameTime) || gameTime <= 0) {
+        alert("زمان بازی را درست وارد کنید.");
+        return;
+      }
+
+      const container = document.getElementById('names-inputs-container');
+      container.innerHTML = '';
+
+      for (let i = 0; i < count; i++) {
+        const row = document.createElement('div');
+        row.className = 'player-row';
+
+        const number = document.createElement('div');
+        number.className = 'player-number';
+        number.textContent = (i + 1) + '.';
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'field player-name-input';
+        input.placeholder = `نام بازیکن ${i + 1}`;
+        input.autocomplete = 'off';
+
+        row.appendChild(number);
+        row.appendChild(input);
+        container.appendChild(row);
+      }
+
+      document.getElementById('setup-screen').classList.add('hidden');
+      document.getElementById('names-screen').classList.remove('hidden');
+    }
+
+    function startGame() {
+      const nameInputs = document.querySelectorAll('.player-name-input');
+      const count = nameInputs.length;
+      const gameTime = parseInt(document.getElementById('game-time').value);
+
+      players = [];
+
+      nameInputs.forEach((input, index) => {
+        const name = input.value.trim() || `بازیکن ${index + 1}`;
+        players.push({
+          name,
+          isSpy: false,
+          role: ""
+        });
+      });
+
+      spyCount = Math.ceil(count / 4);
+      if (spyCount >= count) spyCount = 1;
+
+      timeLeft = gameTime * 60;
+
+      const randomLocation = locations[Math.floor(Math.random() * locations.length)];
+      players.forEach(player => {
+        player.role = randomLocation;
+        player.isSpy = false;
+      });
+
+      let spiesAdded = 0;
+      while (spiesAdded < spyCount) {
+        const randomIndex = Math.floor(Math.random() * players.length);
+        if (!players[randomIndex].isSpy) {
+          players[randomIndex].isSpy = true;
+          players[randomIndex].role = "شما جاسوس هستید!";
+          spiesAdded++;
+        }
+      }
+
+      currentPlayerIndex = 0;
+      isWordVisible = false;
+
+      document.getElementById('names-screen').classList.add('hidden');
+      document.getElementById('game-screen').classList.remove('hidden');
+
+      resetTurn();
+    }
+
+    function resetTurn() {
+      isWordVisible = false;
+      document.getElementById('word-label').textContent = "؟؟؟؟؟";
+      document.getElementById('action-btn').textContent = "نمایش کلمه";
+      document.getElementById('player-turn-text').textContent = `نوبت: ${players[currentPlayerIndex].name}`;
+    }
+
+    function handleButtonClick() {
+      const btn = document.getElementById('action-btn');
+      const label = document.getElementById('word-label');
+
+      if (!isWordVisible) {
+        label.textContent = players[currentPlayerIndex].role;
+        btn.textContent = "مخفی کردن";
+        isWordVisible = true;
+      } else {
+        label.textContent = "؟؟؟؟؟";
+        isWordVisible = false;
+        currentPlayerIndex++;
+
+        if (currentPlayerIndex < players.length) {
+          btn.textContent = "نمایش کلمه";
+          setTimeout(resetTurn, 300);
+        } else {
+          btn.classList.add('hidden');
+          startTimer();
+        }
+      }
+    }
+
+    function startTimer() {
+      document.getElementById('player-turn-text').textContent = "زمان بازی!";
+      document.getElementById('timer-container').classList.remove('hidden');
+      updateTimerDisplay();
+
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        updateTimerDisplay();
+
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          endGame();
+        }
+      }, 1000);
+    }
+
+    function updateTimerDisplay() {
+      const mins = Math.floor(timeLeft / 60);
+      const secs = timeLeft % 60;
+      document.getElementById('timer').textContent =
+        `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+    function endGame() {
+      document.getElementById('game-screen').classList.add('hidden');
+      document.getElementById('guess-screen').classList.remove('hidden');
+
+      const container = document.getElementById('guess-inputs-container');
+      container.innerHTML = '';
+
+      for (let i = 0; i < spyCount; i++) {
+        const wrap = document.createElement('div');
+        wrap.style.marginBottom = '12px';
+
+        const label = document.createElement('label');
+        label.textContent = `جاسوس ${i + 1}:`;
+        label.style.display = 'block';
+        label.style.marginBottom = '6px';
+
+        const select = document.createElement('select');
+        select.id = `guess-${i}`;
+        select.className = 'field';
+
+        players.forEach((p, index) => {
+          const opt = document.createElement('option');
+          opt.value = index;
+          opt.textContent = p.name;
+          select.appendChild(opt);
+        });
+
+        wrap.appendChild(label);
+        wrap.appendChild(select);
+        container.appendChild(wrap);
+      }
+    }
+
+    function checkGuesses() {
+      const results = document.getElementById('final-results');
+      results.innerHTML = '';
+
+      let correctCount = 0;
+
+      for (let i = 0; i < spyCount; i++) {
+        const guessedIndex = parseInt(document.getElementById(`guess-${i}`).value);
+        const guessedPlayer = players[guessedIndex];
+        const isCorrect = guessedPlayer.isSpy;
+
+        if (isCorrect) correctCount++;
+
+        const item = document.createElement('div');
+        item.className = `result-item ${isCorrect ? 'correct' : 'wrong'}`;
+        item.textContent = `${guessedPlayer.name} - ${isCorrect ? 'درسته ✅' : 'غلط ❌'}`;
+        results.appendChild(item);
+      }
+
+      const summary = document.createElement('h3');
+      summary.textContent = `تعداد جواب درست: ${correctCount} از ${spyCount}`;
+      results.prepend(summary);
+    }
+  </script>
+</body>
+</html>
