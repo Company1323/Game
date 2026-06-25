@@ -35,6 +35,27 @@
       text-align: center;
     }
 
+    /* تنظیمات جدید و اصلاح شده برای بخش سازنده */
+    .sazz {
+      position: fixed;      /* ثابت نگه داشتن در پایین صفحه */
+      bottom: 0;            /* چسباندن به پایین */
+      left: 50%;            /* انتقال به وسط صفحه */
+      transform: translateX(-50%); /* جابجایی دقیق به سمت چپ برای مرکز قرار گرفتن واقعی */
+      width: 100%;           /* اشغال عرض کامل برای اطمینان از مرکزیت متن */
+      text-align: center;    /* وسط چین کردن متن */
+      padding-bottom: 15px;  /* فاصله از لبه پایین گوشی (برای اینکه به لبه نچسبد) */
+      pointer-events: none;  /* جلوگیری از تداخل با کلیک‌ها در صفحه (اختیاری) */
+      z-index: 9999;        /* بالاترین اولویت برای نمایش */
+    }
+
+    .sazz h3 {
+      margin: 0;
+      font-size: 14px;       /* سایز مناسب برای موبایل */
+      color: rgba(255, 255, 255, 0.5); /* رنگ سفید کمرنگ برای زیبایی */
+      font-weight: normal;
+    }
+
+
     .hidden {
       display: none !important;
     }
@@ -168,6 +189,10 @@
       <button onclick="checkGuesses()">بررسی حدس‌ها</button>
       <div id="final-results"></div>
     </div>
+  </div>
+
+  <div id="saz" class="sazz">
+    <h3>سازنده : میثاق مصیبی</h3>
   </div>
 
   <script>
